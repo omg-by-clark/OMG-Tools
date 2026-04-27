@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <link rel="icon" href="logo.svg" type="image/svg+xml">
+    <meta charset="UTF-8">
+    <title>色彩提取器</title>
+    <style>
+        body {
+            background-color: #11111b;
+            /* Mocha 基色 */
+            color: #cdd6f4;
+            /* Mocha 文本色 */
+            font-family: Consolas, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 50px;
+        }
+
+        .container {
+            background-color: #1e1e2e;
+            /* Mocha 外层背景 */
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            width: 350px;
+        }
+
+        h3 {
+            color: #cdd6f4;
+            /* 薰衣草紫 */
+            margin-top: 0;
+        }
+
+        label {
+            font-size: 14px;
+            color: #bac2de;
+            /* 副文本色 */
+        }
+
+        input {
+            font: 16px Consolas, sans-serif;
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: #313244;
+            /* 输入框背景 */
+            border: 1px solid #45475a;
+            /* 输入框边框 */
+            color: #fab387;
+            /* 橙色文字 */
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #89b4fa;
+            /* 聚焦时显示蓝色 */
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border-left: 4px solid #89b4fa;
+            /* 蓝色左边框 */
+            background: #181825;
+            /* 结果区深色背景 */
+        }
+
+        .copy-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .copy-btn {
+            background: #a6e3a1;
+            /* 默认绿色 */
+            border: none;
+            color: #1e1e2e;
+            /* 浅色背景上的深色文字 */
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 4px;
+            font-family: Consolas, sans-serif;
+            font-weight: bold;
+        }
+
+        .preview {
+            width: 100%;
+            height: 50px;
+            margin-top: 10px;
+            border-radius: 5px;
+            border: 1px solid #b4befe;
+            /* 紫色边框 */
+        }
+
+        .error {
+            color: #f38ba8;
+            /* 错误时显示红色 */
+        }
+
+        /* 新增：GPL 提示样式 */
+        .gpl-notice {
+            color: #cdd6f4;
+            background: #181825;
+            padding: 12px;
+            border-left: 4px solid #f9e2af;
+            /* 黄色边框表示法律提示 */
+            line-height: 1.6;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h3>🎨 色彩提取器</h3>
+        <label>在此输入 (HEX, RGB 或 HSL):</label>
+        <input type="text" id="colorInput" placeholder="例如: #fab387 或 137,180,250" oninput="convertColor()">
+
+        <div class="result" id="output">
+            等待输入...
+        </div>
+        <div id="preview" class="preview"></div>
+    </div>
+
+    <script>
+        // 核心复制函数
+        function copyText(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = btn.innerText;
+                btn.innerText = "已复制";
+                btn.style.background = "#f9e2af"; // 已复制状态改为黄色
+                btn.style.color = "#1e1e2e";    // 保持深色文字
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.style.background = "#a6e3a1"; // 恢复绿色
+                }, 1000);
+            });
+        }
+
+        function convertColor() {
+            let val = document.getElementById('colorInput').value.trim();
+            let output = document.getElementById('output');
+            let preview = document.getElementById('preview');
+
+            // 新增：检查特殊命令
+            if (val === "show w") {
+                preview.style.display = "none"; // 隐藏颜色预览框
+                output.innerHTML = `
+                    <div class="gpl-notice">
+                        <strong>15. Disclaimer of Warranty.</strong><br><br>
+                        THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE LAW.
+                        EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES
+                        PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED,
+                        INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+                        FOR A PARTICULAR PURPOSE. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE
+                        PROGRAM IS WITH YOU. SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL
+                        NECESSARY SERVICING, REPAIR OR CORRECTION.
+                    </div>
+                `;
+                return;
+            }
+
+            if (val === "show c") {
+                preview.style.display = "none"; // 隐藏颜色预览框
+                output.innerHTML = `
+                    <div class="gpl-notice">
+                        <strong>This is free software:</strong> you are free to change and redistribute it
+                        under the terms of the GNU General Public License as published by the Free Software
+                        Foundation, either version 3 of the License, or (at your option) any later version.<br><br>
+                        This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+                        without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+                        See the GNU General Public License for more details.<br><br>
+                        You should have received a copy of the GNU General Public License along with this program.
+                        If not, see <a href="https://www.gnu.org/licenses/" style="color:#89b4fa;">https://www.gnu.org/licenses/</a>.
+                    </div>
+                `;
+                return;
+            }
+
+            // 正常颜色处理前，确保预览框可见
+            preview.style.display = "block";
+
+            // 使用浏览器原生的样式解析能力
+            let s = new Option().style;
+            s.color = val;
+
+            if (s.color !== "") {
+                // 借用一个临时 div 获取计算后的 RGB
+                let tempDiv = document.createElement("div");
+                tempDiv.style.color = val;
+                document.body.appendChild(tempDiv);
+                let computedRgb = window.getComputedStyle(tempDiv).color;
+                document.body.removeChild(tempDiv);
+
+                let rgbValues = computedRgb.match(/\d+/g).map(Number);
+                let hex = "#" + rgbValues.map(x => x.toString(16).padStart(2, '0')).join('');
+
+                // 计算 HSL 逻辑
+                let r = rgbValues[0] / 255, g = rgbValues[1] / 255, b = rgbValues[2] / 255;
+                let max = Math.max(r, g, b), min = Math.min(r, g, b);
+                let h, s_val, l = (max + min) / 2;
+
+                if (max === min) {
+                    h = s_val = 0;
+                } else {
+                    let d = max - min;
+                    s_val = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                    switch (max) {
+                        case r:
+                            h = (g - b) / d + (g < b ? 6 : 0);
+                            break;
+                        case g:
+                            h = (b - r) / d + 2;
+                            break;
+                        case b:
+                            h = (r - g) / d + 4;
+                            break;
+                    }
+                    h /= 6;
+                }
+
+                let hslStr = `hsl(${Math.round(h * 360)}, ${Math.round(s_val * 100)}%, ${Math.round(l * 100)}%)`;
+
+                // 构造带按钮的输出 HTML
+                output.innerHTML = `
+                    <div class="copy-item">
+                        <span><strong>HEX:</strong> ${hex}</span>
+                        <button class="copy-btn" onclick="copyText('${hex}', this)">复制</button>
+                    </div>
+                    <div class="copy-item">
+                        <span><strong>RGB:</strong> ${computedRgb}</span>
+                        <button class="copy-btn" onclick="copyText('${computedRgb}', this)">复制</button>
+                    </div>
+                    <div class="copy-item">
+                        <span><strong>HSL:</strong> ${hslStr}</span>
+                        <button class="copy-btn" onclick="copyText('${hslStr}', this)">复制</button>
+                    </div>
+                `;
+                preview.style.backgroundColor = hex;
+            } else {
+                output.innerHTML = '<span class="error">格式不识别...</span>';
+                preview.style.backgroundColor = "transparent";
+            }
+        }
+    </script>
+</body>
+
+</html>
