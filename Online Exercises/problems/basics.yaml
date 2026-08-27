@@ -1,0 +1,155 @@
+name: 英语时态测验
+questions:
+  - id: cloze-weekend
+    type: cloze
+    title: 完形填空（Clark 的周末）
+    article: |
+      Every weekend, Clark {{1}} new ideas for his website. Right now, he {{2}} a small exercise page, and he believes it {{3}} even better next week.
+    questions:
+      - id: blank-1
+        prompt: 第 1 空应使用哪个动词形式？
+        options:
+          - { id: a, text: develops }
+          - { id: b, text: is developing }
+          - { id: c, text: will develop }
+        answer: a
+        explanation: Every weekend 表示习惯，使用一般现在时 develops。
+      - id: blank-2
+        prompt: 第 2 空应使用哪个动词形式？
+        options:
+          - { id: a, text: builds }
+          - { id: b, text: is building }
+          - { id: c, text: will build }
+        answer: b
+        explanation: Right now 表示正在发生，使用现在进行时 is building。
+      - id: blank-3
+        prompt: 第 3 空应使用哪个动词形式？
+        options:
+          - { id: a, text: becomes }
+          - { id: b, text: is becoming }
+          - { id: c, text: will become }
+        answer: c
+        explanation: next week 表示将来，使用一般将来时 will become。
+
+  - id: reading-project
+    type: reading
+    title: 阅读理解（OMG 项目）
+    article: |
+      Clark works on the OMG project after school. He usually plans small improvements first, then writes and tests the code carefully. Today he is building an exercise page, and next week he will invite his friends to try it.
+    questions:
+      - id: reading-1
+        prompt: Clark 通常先做什么？
+        options:
+          - { id: a, text: 邀请朋友测试 }
+          - { id: b, text: 规划小改进 }
+          - { id: c, text: 删除全部代码 }
+        answer: b
+        explanation: 文章说他通常先规划小改进。
+      - id: reading-2
+        prompt: Clark 下周打算做什么？
+        options:
+          - { id: a, text: 邀请朋友试用 }
+          - { id: b, text: 停止项目 }
+          - { id: c, text: 重写浏览器 }
+        answer: a
+        explanation: 文章最后说明他下周会邀请朋友试用。
+
+  - id: order-sentence
+    type: ordering
+    title: 连词成句
+    prompt: 按正确顺序输入词语编号，组成一个完整的英文句子。
+    words:
+      - today
+      - Clark
+      - a
+      - website
+      - is
+      - useful
+      - building
+      - for
+      - students
+      - English
+      - to
+      - practice
+    answer: [2, 5, 7, 3, 6, 4, 8, 9, 11, 12, 10, 1]
+    explanation: Clark is building a useful website for students to practice English today.
+
+  - id: q-continuous
+    type: single
+    title: 单选题（现在进行时）
+    prompt: |
+      选择正确的时态填空：
+      Look! Clark ______ (write) code for the omg website now.
+    options:
+      - id: a
+        text: "writes"
+      - id: b
+        text: "is writing"
+      - id: c
+        text: "will write"
+    answer: b
+    explanation: 句首有 "Look!"，并且句子末尾有 "now"，表示动作此时此刻正在发生，所以要用现在进行时 (is writing)。
+
+  - id: q-future
+    type: single
+    title: 单选题（一般将来时）
+    prompt: |
+      选择正确的时态填空：
+      I think the omg Android app ______ (be) very popular next year!
+    options:
+      - id: a
+        text: "is"
+      - id: b
+        text: "is being"
+      - id: c
+        text: "will be"
+    answer: c
+    explanation: next year 表示将来的时间，且 "I think" 经常与一般将来时连用，表示对未来的预测，因此选 will be。
+
+  - id: q-multiple-tenses
+    type: multiple
+    title: 多选题（辨析一般现在时）
+    prompt: |
+      阅读下面的句子，请选出所有正确使用了**一般现在时 (Present Simple)** 的选项。
+    options:
+      - id: a
+        text: "I update the Supabase database every day."
+      - id: b
+        text: "My dad works in a bank."
+      - id: c
+        text: "We are fixing bugs at the moment."
+      - id: d
+        text: "I will learn more about HTML tomorrow."
+    answers: [a, b]
+    explanation: every day 表示日常习惯（选项 a），描述客观事实或状态（选项 b）都需要使用一般现在时。选项 c 是现在进行时，选项 d 是一般将来时。
+
+  - id: q-text-fill
+    type: text
+    title: 填空题（一般将来时）
+    prompt: "请填写正确的动词形式（全部小写即可）：If it rains tomorrow, I _______ (stay) at home and write JavaScript."
+    answer: "will stay"
+    explanation: 这是一道经典的“主将从现”题。在 if 引导的条件状语从句中，主句需要使用一般将来时 (will stay)。
+
+  - id: q-matching-time
+    type: matching
+    title: 连线题（时间标志词匹配）
+    prompt: 将常见的英语时间标志词与它们对应的最贴切的时态连接起来。
+    left:
+      - id: everyday
+        text: "every day / usually / always"
+      - id: now
+        text: "now / at the moment / look!"
+      - id: tomorrow
+        text: "tomorrow / next week / in the future"
+    right:
+      - id: present
+        text: "一般现在时 (Present Simple)"
+      - id: continuous
+        text: "现在进行时 (Present Continuous)"
+      - id: future
+        text: "一般将来时 (Future Simple)"
+    answers:
+      everyday: present
+      now: continuous
+      tomorrow: future
+    explanation: 找准时间标志词是正确判断英语时态的终极秘籍。

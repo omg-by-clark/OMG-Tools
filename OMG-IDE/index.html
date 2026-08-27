@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#11111b">
+  <title>编程题目 · Online Exercises</title>
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="programming.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand ripple-button" href="index.html" aria-label="回到 Online Exercises 首页">
+      <img src="logo.svg" alt=""><span>Online Exercises</span>
+    </a>
+    <button class="icon-button ripple-button hidden" id="logoutButton" type="button" aria-label="断开目标站账号" title="断开账号">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.09 15.59 11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59ZM19 3h-8a2 2 0 0 0-2 2v3h2V5h8v14h-8v-3H9v3a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Z"/></svg>
+    </button>
+  </header>
+
+  <main class="shell programming-shell">
+    <div class="view-heading programming-heading">
+      <div><a class="back-link ripple-button" href="index.html">← 题目列表</a><h1>编程题目</h1></div>
+      <div class="connection-badge" id="connectionBadge"><span></span>未连接</div>
+    </div>
+
+    <section class="login-panel question-card" id="loginPanel">
+      <div class="login-copy">
+        <span class="eyebrow">123.60.188.246 · C++ P1</span>
+        <h2>连接题库账号</h2>
+        <p>填写目标网站的登录账号和登录密码，不是课程密码；课程密码会自动读取。凭据只转发给目标站，不会保存到本地。</p>
+      </div>
+      <form class="login-form" id="loginForm">
+        <label><span>用户名</span><input id="usernameInput" name="username" autocomplete="username" required></label>
+        <label><span>密码</span><input id="passwordInput" name="password" type="password" autocomplete="current-password" required></label>
+        <button class="filled-button ripple-button" id="loginButton" type="submit">连接并搜题</button>
+      </form>
+    </section>
+
+    <section class="results-panel hidden" id="resultsPanel">
+      <div class="search-toolbar question-card">
+        <label class="search-field">
+          <span class="visually-hidden">搜索题目</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 3a6.5 6.5 0 1 0 3.98 11.64L19.85 21 21 19.85l-6.36-6.37A6.5 6.5 0 0 0 9.5 3Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"/></svg>
+          <input id="queryInput" type="search" placeholder="题号、标题或训练名称">
+        </label>
+        <label class="score-field"><span>最低 OI Rank</span><input id="scoreInput" type="number" min="0" step="0.1" value="0"></label>
+        <button class="filled-button ripple-button" id="searchButton" type="button">筛选</button>
+      </div>
+      <div class="summary-row" id="summaryRow"></div>
+      <div class="programming-grid" id="problemGrid"></div>
+      <div class="empty-state question-card hidden" id="emptyState"><h2>没有找到符合条件的题目</h2><p>可以降低最低分，或清空关键词后再试。</p></div>
+    </section>
+
+    <section class="loading-panel question-card hidden" id="loadingPanel" aria-live="polite">
+      <span class="loader"></span><div><h2>正在汇总编程题目</h2><p>首次连接需要读取并解锁 48 个训练，请稍候。</p></div>
+    </section>
+  </main>
+
+  <div id="snackbar" class="snackbar" role="status" aria-live="assertive"></div>
+  <script src="common.js?v=20260721a"></script>
+  <script src="programming.js?v=20260721a"></script>
+</body>
+</html>

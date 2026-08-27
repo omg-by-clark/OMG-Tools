@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>123OJ 训练搜题</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <p class="eyebrow">123OJ / Training Category 7</p>
+      <h1>OI Rank Score 搜题</h1>
+      <p class="summary">
+        我先把本地搜题页和 <code>:8765</code> 服务搭好。<br>
+        现在能安全读取的是公开训练目录；真正的题目内容目前被目标站点标成私有训练。
+      </p>
+      <div class="actions">
+        <button id="refreshButton" class="pill" type="button">刷新训练列表</button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card metrics">
+        <div>
+          <p class="label">训练总数</p>
+          <p class="value" id="trainingCount">--</p>
+        </div>
+        <div>
+          <p class="label">公开训练</p>
+          <p class="value" id="publicCount">--</p>
+        </div>
+        <div>
+          <p class="label">私有训练</p>
+          <p class="value" id="privateCount">--</p>
+        </div>
+        <div>
+          <p class="label">目标阈值</p>
+          <p class="value">≥ 10</p>
+        </div>
+      </article>
+
+      <article class="card status-card">
+        <p class="label">当前状态</p>
+        <p class="status-text" id="statusText">正在准备…</p>
+        <div class="status-flags">
+          <span class="badge" id="privateFlag">不会读取私有训练</span>
+          <span class="badge badge-soft">目标：categoryId=7</span>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>结论</h2>
+      </div>
+      <div id="summaryCard" class="notice">
+        还没有加载数据。
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>训练列表</h2>
+        <span class="hint">公开可见的目录信息</span>
+      </div>
+      <div id="trainingList" class="training-list empty">正在加载训练列表…</div>
+    </section>
+  </main>
+
+  <template id="trainingTemplate">
+    <article class="training-card">
+      <div>
+        <h3 class="training-title"></h3>
+        <p class="training-meta"></p>
+      </div>
+      <span class="auth-chip"></span>
+    </article>
+  </template>
+
+  <script src="./app.js"></script>
+</body>
+</html>

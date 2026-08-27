@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OI Rank Scraper</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
+      background: #f7faf8;
+      color: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(135deg, rgba(22, 163, 74, 0.08), transparent 36%),
+        #f7faf8;
+    }
+
+    main {
+      width: min(680px, calc(100vw - 32px));
+      padding: 28px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .source {
+      margin: 8px 0 22px;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .refresh {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      height: 54px;
+      border: 0;
+      background: #16a34a;
+      color: #fff;
+      font: 800 18px "Microsoft YaHei UI", "Segoe UI", sans-serif;
+      cursor: pointer;
+      transition: background 140ms ease, transform 140ms ease;
+    }
+
+    .refresh:hover {
+      background: #15803d;
+    }
+
+    .refresh:active {
+      transform: translateY(1px);
+    }
+
+    .refresh[disabled] {
+      cursor: wait;
+      background: #86cfa0;
+      transform: none;
+    }
+
+    .ripple {
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+      background: rgba(187, 247, 208, 0.75);
+      transform: translate(-50%, -50%) scale(0);
+      animation: ripple 620ms ease-out;
+    }
+
+    @keyframes ripple {
+      to {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+      }
+    }
+
+    .card {
+      margin-top: 22px;
+      padding: 24px;
+      background: #fff;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .label {
+      margin: 0 0 6px;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .value {
+      margin: 0;
+      min-height: 34px;
+      font-size: 24px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .nickname {
+      margin-top: 22px;
+    }
+
+    .status {
+      margin: 16px 0 0;
+      color: #64748b;
+      font-size: 14px;
+      min-height: 20px;
+    }
+
+    @media (max-width: 520px) {
+      main {
+        padding: 20px 0;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>OI Rank Scraper</h1>
+    <p class="source">目标用户：张弛　数据源：123.60.188.246/oi-rank</p>
+
+    <button class="refresh" id="refreshButton" type="button">刷新</button>
+
+    <section class="card">
+      <div class="metrics">
+        <div>
+          <p class="label">排名</p>
+          <p class="value" id="rank">--</p>
+        </div>
+        <div>
+          <p class="label">前百分比</p>
+          <p class="value" id="topPercent">--</p>
+        </div>
+        <div>
+          <p class="label">OI 分数</p>
+          <p class="value" id="score">--</p>
+        </div>
+        <div>
+          <p class="label">AC 数</p>
+          <p class="value" id="ac">--</p>
+        </div>
+        <div>
+          <p class="label">总提交</p>
+          <p class="value" id="total">--</p>
+        </div>
+      </div>
+
+      <div class="nickname">
+        <p class="label">昵称</p>
+        <p class="value" id="nickname">--</p>
+      </div>
+    </section>
+
+    <p class="status" id="status">页面已打开，正在加载...</p>
+  </main>
+
+  <script>
+    const BASE_URL = "http://123.60.188.246";
+    const TARGET_USER = "张弛";
+    const REFRESH_INTERVAL = 10 * 60 * 1000;
+    const elements = {
+      refreshButton: document.querySelector("#refreshButton"),
+      rank: document.querySelector("#rank"),
+      topPercent: document.querySelector("#topPercent"),
+      score: document.querySelector("#score"),
+      ac: document.querySelector("#ac"),
+      total: document.querySelector("#total"),
+      nickname: document.querySelector("#nickname"),
+      status: document.querySelector("#status")
+    };
+
+    let loading = false;
+
+    function apiUrl(params) {
+      return `${BASE_URL}/api/get-rank-list?${new URLSearchParams(params).toString()}`;
+    }
+
+    async function getJson(params) {
+      const response = await fetch(apiUrl(params), { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const payload = await response.json();
+      if (payload.status !== 200) {
+        throw new Error(payload.msg || "接口返回异常");
+      }
+      return payload.data;
+    }
+
+    async function loadRank() {
+      const summary = await getJson({
+        currentPage: 1,
+        limit: 1,
+        type: 1,
+        searchUser: ""
+      });
+      const data = await getJson({
+        currentPage: 1,
+        limit: summary.total,
+        type: 1,
+        searchUser: ""
+      });
+      const index = data.records.findIndex((user) => user.username === TARGET_USER);
+      return {
+        rank: index >= 0 ? index + 1 : null,
+        topPercent: index >= 0 ? (index + 1) / summary.total * 100 : null,
+        totalUsers: summary.total,
+        user: index >= 0 ? data.records[index] : null
+      };
+    }
+
+    async function refresh() {
+      if (loading) return;
+      loading = true;
+      elements.refreshButton.disabled = true;
+      elements.status.textContent = "正在重新加载...";
+      try {
+        const result = await loadRank();
+        const now = new Date().toLocaleString();
+        if (!result.user) {
+          elements.rank.textContent = "未找到";
+          elements.topPercent.textContent = "--";
+          elements.score.textContent = "--";
+          elements.ac.textContent = "--";
+          elements.total.textContent = "--";
+          elements.nickname.textContent = "--";
+          elements.status.textContent = `${now} 加载完成，但未找到用户。`;
+        } else {
+          elements.rank.textContent = `第 ${result.rank} / ${result.totalUsers} 名`;
+          elements.topPercent.textContent = `前 ${result.topPercent.toFixed(2)}%`;
+          elements.score.textContent = result.user.score ?? "--";
+          elements.ac.textContent = result.user.ac ?? "--";
+          elements.total.textContent = result.user.total ?? "--";
+          elements.nickname.textContent = result.user.nickname || "--";
+          elements.status.textContent = `${now} 已加载。下次自动刷新在 10 分钟后。`;
+        }
+      } catch (error) {
+        elements.status.textContent = `加载失败：${error.message}`;
+      } finally {
+        loading = false;
+        elements.refreshButton.disabled = false;
+      }
+    }
+
+    function addRipple(event) {
+      const button = event.currentTarget;
+      const rect = button.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height) * 2;
+      const ripple = document.createElement("span");
+      ripple.className = "ripple";
+      ripple.style.width = `${size}px`;
+      ripple.style.height = `${size}px`;
+      ripple.style.left = `${event.clientX - rect.left}px`;
+      ripple.style.top = `${event.clientY - rect.top}px`;
+      button.appendChild(ripple);
+      ripple.addEventListener("animationend", () => ripple.remove(), { once: true });
+    }
+
+    elements.refreshButton.addEventListener("click", (event) => {
+      addRipple(event);
+      refresh();
+    });
+
+    window.addEventListener("keydown", (event) => {
+      const isRefresh = event.key === "F5" || (event.ctrlKey && event.key.toLowerCase() === "r");
+      if (!isRefresh) return;
+      event.preventDefault();
+      refresh();
+    });
+
+    refresh();
+    setInterval(refresh, REFRESH_INTERVAL);
+  </script>
+</body>
+</html>

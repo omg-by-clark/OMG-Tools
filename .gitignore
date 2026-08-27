@@ -1,1 +1,10 @@
 /.vscode/
+
+/Online Exercises/tmp/*
+
+/Online Exercises/problems/gesp*.*
+
+/Online Exercises/problems/knowledge-demo.yaml
+
+/Online Exercises/problems/assets
+

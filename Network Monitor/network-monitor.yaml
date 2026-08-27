@@ -1,0 +1,10 @@
+# OMG Network Monitor configuration
+# Changes are applied after clicking "Reload config" in the app.
+start_with_windows: true
+poll_interval_ms: 1000
+keep_closed_seconds: 90
+retention_days: 30
+upload_alert_mbps: 20
+log_connection_events: true
+log_minute_metrics: true
+start_minimized_with_windows: true

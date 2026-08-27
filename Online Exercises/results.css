@@ -1,0 +1,74 @@
+.result-heading {
+  text-align: center;
+}
+
+.result-overline {
+  color: var(--mauve);
+  font: 600 12px/1.2 "Google Sans Code", Consolas, "Noto Sans SC", monospace;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.result-card {
+  min-height: 142px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 22px;
+  border: 1px solid rgba(88, 91, 112, .5);
+  border-radius: 19px;
+  background: rgba(30, 30, 46, .84);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, .22);
+}
+
+.result-card.primary {
+  grid-column: span 2;
+  background: linear-gradient(135deg, rgba(203, 166, 247, .14), rgba(137, 180, 250, .09));
+}
+
+.result-card.grade {
+  border-color: rgba(249, 226, 175, .35);
+}
+
+.result-card small {
+  color: var(--subtext-0);
+  font-size: 13px;
+}
+
+.result-card strong {
+  color: var(--lavender);
+  font: 700 clamp(30px, 6vw, 48px)/1 "Google Sans Code", Consolas, "Noto Sans SC", monospace;
+}
+
+.result-card strong.green {
+  color: var(--green);
+}
+
+.result-card strong.red {
+  color: var(--red);
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 25px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 620px) {
+  .result-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .result-card.primary {
+    grid-column: span 2;
+  }
+}

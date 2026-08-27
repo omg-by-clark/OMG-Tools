@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#11111b">
+  <title>编程题 · Online Exercises</title>
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+  <link rel="stylesheet" href="common.css?v=20260724a">
+  <link rel="stylesheet" href="programming-problem.css?v=20260724a">
+</head>
+<body>
+  <header class="topbar problem-topbar">
+    <a class="brand ripple-button" href="index.html" aria-label="回到 Online Exercises 首页"><img src="logo.svg" alt=""><span>Online Exercises</span></a>
+    <a class="back-link ripple-button" href="programming.html">← 编程题目</a>
+  </header>
+
+  <main class="problem-shell">
+    <section class="problem-loading question-card" id="loadingPanel" aria-live="polite"><span class="loader"></span><div><h1>正在获取题目</h1><p>题面会留在本地页面中显示。</p></div></section>
+    <section class="problem-error question-card hidden" id="errorPanel"><h1>暂时打不开这道题</h1><p id="errorText"></p><a class="filled-button ripple-button" href="programming.html">回到题目列表</a></section>
+
+    <div class="problem-workspace hidden" id="workspace">
+      <article class="statement-pane question-card">
+        <header class="statement-header">
+          <div><span class="problem-number" id="problemNumber"></span><h1 id="problemTitle"></h1></div>
+          <span class="ac-badge hidden" id="acBadge">✓ 已 AC</span>
+        </header>
+        <div class="problem-meta" id="problemMeta"></div>
+        <section class="statement-section"><h2>题目描述</h2><div class="markdown-body" id="description"></div></section>
+        <section class="statement-section hidden" id="inputSection"><h2>输入</h2><div class="markdown-body" id="inputDescription"></div></section>
+        <section class="statement-section hidden" id="outputSection"><h2>输出</h2><div class="markdown-body" id="outputDescription"></div></section>
+        <section class="statement-section hidden" id="examplesSection"><h2>样例</h2><div id="examples"></div></section>
+        <section class="statement-section hidden" id="hintSection"><h2>提示</h2><div class="markdown-body" id="hint"></div></section>
+        <section class="statement-section hidden" id="sourceSection"><h2>来源</h2><div class="markdown-body" id="source"></div></section>
+      </article>
+
+      <aside class="coding-pane">
+        <section class="editor-card question-card">
+          <div class="editor-toolbar">
+            <label for="languageSelect">语言</label>
+            <select id="languageSelect" aria-label="编程语言"></select>
+            <span class="draft-state" id="draftState">自动保存</span>
+          </div>
+          <div class="code-editor">
+            <pre class="line-numbers" id="lineNumbers" aria-hidden="true">1</pre>
+            <div class="editor-stack">
+              <pre class="code-highlight" id="codeHighlight" aria-hidden="true"><code></code></pre>
+              <textarea id="codeInput" aria-label="代码编辑器" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+              <div class="completion-popup hidden" id="completionPopup" role="listbox" aria-label="代码补全"></div>
+            </div>
+          </div>
+          <div class="submit-row"><span id="codeLength">0 / 65535</span><button class="filled-button ripple-button submit-button" id="submitButton" type="button">提交代码</button></div>
+        </section>
+
+        <section class="judge-card question-card hidden" id="judgeCard" aria-live="polite">
+          <div class="judge-heading"><span class="judge-dot"></span><div><span class="judge-label">评测结果</span><h2 id="judgeStatus">等待中</h2></div></div>
+          <div class="judge-details" id="judgeDetails"></div>
+          <pre class="judge-message hidden" id="judgeMessage"></pre>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <div id="snackbar" class="snackbar" role="status" aria-live="assertive"></div>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"></script>
+  <script src="common.js?v=20260721a"></script>
+  <script src="programming-problem.js?v=20260721a"></script>
+</body>
+</html>
