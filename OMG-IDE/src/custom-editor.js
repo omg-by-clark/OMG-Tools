@@ -120,7 +120,7 @@ const omgTheme = EditorView.theme({
     lineHeight: "24px"
   },
   ".cm-content": { padding: "14px 0 50px", caretColor: "#f0edf9" },
-  ".cm-line": { minHeight: "24px", padding: "0 12px" },
+  ".cm-line": { minHeight: "24px", padding: "0" },
   ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#f0edf9", borderLeftWidth: "1px" },
   ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": { backgroundColor: "rgb(123 146 201 / 28%)" },
   ".cm-activeLine": {
