@@ -1,0 +1,33 @@
+{
+    "productName": "OMG IDE",
+    "version": "1.0.0",
+    "identifier": "com.omg-lang.ide",
+    "build": {
+        "frontendDist": "../dist",
+        "devUrl": "http://localhost:1420",
+        "beforeDevCommand": "npm run dev",
+        "beforeBuildCommand": "npm run build"
+    },
+    "app": {
+        "windows": [
+            {
+                "title": "OMG IDE",
+                "width": 1280,
+                "height": 820,
+                "minWidth": 900,
+                "minHeight": 600,
+                "decorations": false,
+                "fullscreen": false,
+                "resizable": true,
+                "maximized": false
+            }
+        ]
+    },
+    "bundle": {
+        "active": true,
+        "targets": "nsis",
+        "resources": [
+            "resources/omg.exe"
+        ]
+    }
+}

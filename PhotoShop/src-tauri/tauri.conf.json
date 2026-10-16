@@ -1,0 +1,31 @@
+{
+  "productName": "PhotoShop",
+  "version": "1.0.0",
+  "identifier": "com.omg-tools.photoshop",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1421",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [{
+      "label": "main",
+      "title": "PhotoShop",
+      "width": 1440,
+      "height": 920,
+      "minWidth": 980,
+      "minHeight": 650,
+      "decorations": false,
+      "resizable": true,
+      "fullscreen": false,
+      "maximized": true
+    }]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "nsis",
+    "icon": ["../../OMG-IDE/src-tauri/icons/icon.ico"],
+    "fileAssociations": [{ "ext": ["oimg"], "name": "PhotoShop Image Project", "role": "Editor" }]
+  }
+}

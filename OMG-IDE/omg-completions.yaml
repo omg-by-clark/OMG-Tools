@@ -1,0 +1,99 @@
+# OMG IDE completion templates. Edit this file while the IDE is running.
+# `input_count` is updated when a completion is accepted.
+completions:
+  - trigger: class
+    category: template
+    input_count: 0
+    text: |-
+      class name {
+        var field = null
+
+        func method() {
+          // code
+        }
+      }
+      
+  - trigger: importstring
+    category: template
+    input_count: 0
+    text: |-
+      import string
+      
+  - trigger: for
+    category: template
+    input_count: 0
+    text: |-
+      for i in 0 to count {
+        // code
+      }
+  - trigger: forr
+    category: template
+    input_count: 0
+    text: |-
+      for i in count to 0 {
+        // code
+      }
+  - trigger: forrange
+    category: template
+    input_count: 0
+    text: |-
+      for i in [1, 2, 3] {
+        // code
+      }
+  - trigger: while
+    category: template
+    input_count: 0
+    text: |-
+      while true {
+        // code
+      }
+  - trigger: repeatuntil
+    category: template
+    input_count: 1
+    text: |-
+      repeat until false {
+        // code
+      }
+  - trigger: if
+    category: template
+    input_count: 1
+    text: |-
+      if true {
+        // code
+      }
+  - trigger: ifel
+    category: template
+    input_count: 0
+    text: |-
+      if true {
+        // code
+      } else {
+        // 
+      }
+  - trigger: ifelif
+    category: template
+    input_count: 0
+    text: |-
+      if true {
+        // code
+      } else if true {
+        // code
+      } else {
+        // code
+      }
+  - trigger: try
+    category: template
+    input_count: 0
+    text: |-
+      try {
+        // code
+      } if error is detected {
+        // code
+      }
+  - trigger: func
+    category: template
+    input_count: 1
+    text: |-
+      func function(var arg) {
+        // code
+      }

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OMG Network Monitor</title>
+    <style>
+      /* This is deliberately inline: it paints before the JavaScript bundle is
+         evaluated, so a native window is never a blank dark rectangle. */
+      #app { min-height: 100vh; background: #1e1e2e; }
+      .boot-splash { min-height: 100vh; display: grid; place-items: center; overflow: hidden; color: #cdd6f4; font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif; background: radial-gradient(circle at 50% 49%, rgba(116,199,236,.17), transparent 19rem), radial-gradient(ellipse at 14% 50%, rgba(116,199,236,.15), transparent 33%), radial-gradient(ellipse at 86% 50%, rgba(203,166,247,.15), transparent 33%), #1e1e2e; }
+      .boot-splash__content { text-align: center; animation: boot-enter .46s ease-out both; }
+      .boot-splash__mark { width: 106px; height: 106px; margin: 0 auto 21px; object-fit: contain; filter: drop-shadow(0 0 18px rgba(137,180,250,.45)); animation: boot-pulse 1.4s ease-in-out infinite alternate; }
+      .boot-splash__title { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: .17em; }
+      .boot-splash__title span { color: #cba6f7; font-weight: 500; }
+      .boot-splash__status { margin: 15px 0 0; color: #a6adc8; font-size: 14px; }
+      .boot-splash__status i { display: inline-block; width: 8px; height: 8px; margin-right: 9px; border-radius: 50%; background: #89dceb; box-shadow: 0 0 12px #89dceb; animation: boot-dot .8s ease-in-out infinite alternate; }
+      @keyframes boot-enter { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+      @keyframes boot-pulse { from { transform: scale(.96); } to { transform: scale(1.035); } }
+      @keyframes boot-dot { from { opacity: .45; } to { opacity: 1; } }
+    </style>
+  </head>
+  <body>
+    <div id="window-titlebar" data-tauri-drag-region>
+      <div class="titlebar-brand" data-tauri-drag-region>
+        <span class="titlebar-logo" aria-hidden="true">
+          <img src="./network-monitor-logo.png" alt="" />
+        </span>
+        <span data-tauri-drag-region>OMG Network Monitor</span>
+      </div>
+      <div class="window-controls">
+        <button id="window-minimize" class="window-control" type="button" aria-label="最小化" title="最小化">
+          <svg viewBox="0 0 12 12"><path d="M2 8.5h8"/></svg>
+        </button>
+        <button id="window-maximize" class="window-control" type="button" aria-label="最大化" title="最大化">
+          <svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7"/></svg>
+        </button>
+        <button id="window-close" class="window-control close" type="button" aria-label="关闭到托盘" title="关闭到托盘">
+          <svg viewBox="0 0 12 12"><path d="m2.5 2.5 7 7m0-7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="app"><main class="boot-splash" aria-live="polite" aria-label="正在初始化 Network Monitor"><div class="boot-splash__content"><img class="boot-splash__mark" src="./network-monitor-logo.png" alt="" /><p class="boot-splash__title">NETWORK <span>MONITOR</span></p><p class="boot-splash__status"><i></i>正在初始化监控服务</p></div></main></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -5,9 +5,9 @@ const { chromium } = require("playwright");
 const iconDir = process.argv[2] || "C:\\Catppuccin-Icons\\Theme\\CatppuccinIcon";
 const outDir = process.argv[3] || path.join(__dirname, "icon-cache", "96");
 const size = Number(process.argv[4] || 96);
+const iconBackground = process.argv[5] || "#303446";
 const edgePath = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const iconBackground = "#303446";
-const rendererVersion = 2;
+const rendererVersion = 3;
 
 fs.mkdirSync(outDir, { recursive: true });
 

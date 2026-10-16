@@ -85,10 +85,14 @@ static HFONT g_font = nullptr;
 static HBRUSH g_bgBrush = nullptr;
 static HBRUSH g_surfaceBrush = nullptr;
 static HIMAGELIST g_icons = nullptr;
+static HIMAGELIST g_iconsSelected = nullptr;
 static ULONG_PTR g_gdiplusToken = 0;
 static std::vector<Entry> g_entries;
 static std::wstring g_currentDir;
 static std::wstring g_query;
+// -1 preserves the original type/name order until the user picks a column.
+static int g_sortColumn = -1;
+static bool g_sortAscending = true;
 static std::vector<std::wstring> g_history;
 static int g_historyIndex = -1;
 static bool g_navigatingFromHistory = false;
@@ -97,6 +101,7 @@ static std::unordered_map<std::wstring, std::wstring> g_extToIcon;
 static std::unordered_map<HTREEITEM, std::wstring> g_treePaths;
 static std::unordered_map<HTREEITEM, bool> g_treeLoaded;
 static std::wstring g_iconCacheDir;
+static std::wstring g_iconCacheSelectedDir;
 static UINT g_dpi = 96;
 
 struct RippleState {
@@ -106,6 +111,15 @@ struct RippleState {
 
 static std::unordered_map<HWND, RippleState> g_ripples;
 static WNDPROC g_buttonProc = nullptr;
+static WNDPROC g_listProc = nullptr;
+
+struct MarqueeState {
+    bool active = false;
+    POINT start{0, 0};
+    POINT current{0, 0};
+};
+
+static MarqueeState g_marquee;
 
 static int Dpi(int value) {
     return MulDiv(value, (int)g_dpi, 96);
@@ -701,14 +715,77 @@ static int AddIcon(const std::wstring& key, const std::wstring& svgName) {
     if (existing != g_iconIndex.end()) return existing->second;
     std::wstring path = JoinPath(kIconDir, svgName + L".svg");
     std::wstring pngPath = JoinPath(g_iconCacheDir, svgName + L".png");
+    std::wstring selectedPngPath = JoinPath(g_iconCacheSelectedDir, svgName + L".png");
     HBITMAP hbmp = LoadPngBitmap(pngPath, Dpi(kIconSizeBase));
     if (!hbmp && FileExists(path)) hbmp = RenderSvgBitmap(path, Dpi(kIconSizeBase));
     if (!hbmp) return g_iconIndex.count(L"generic") ? g_iconIndex[L"generic"] : 0;
     int index = ImageList_Add(g_icons, hbmp, nullptr);
+
+    HBITMAP selectedBmp = LoadPngBitmap(selectedPngPath, Dpi(kIconSizeBase));
+    if (!selectedBmp) selectedBmp = LoadPngBitmap(pngPath, Dpi(kIconSizeBase));
+    if (!selectedBmp && FileExists(path)) selectedBmp = RenderSvgBitmap(path, Dpi(kIconSizeBase));
+    if (selectedBmp) {
+        ImageList_Add(g_iconsSelected, selectedBmp, nullptr);
+        DeleteObject(selectedBmp);
+    }
+
     DeleteObject(hbmp);
     if (index < 0) index = 0;
     g_iconIndex[key] = index;
     return index;
+}
+
+static bool IconAssetExists(const std::wstring& svgName) {
+    return FileExists(JoinPath(g_iconCacheDir, svgName + L".png")) ||
+           FileExists(JoinPath(g_iconCacheSelectedDir, svgName + L".png")) ||
+           FileExists(JoinPath(kIconDir, svgName + L".svg"));
+}
+
+static std::wstring FolderIconSlug(const std::wstring& folderName) {
+    std::wstring slug = ToLower(folderName);
+    while (!slug.empty() && slug.front() == L'.') slug.erase(slug.begin());
+
+    static const std::unordered_map<std::wstring, std::wstring> aliases = {
+        {L"node_modules", L"node"},
+        {L"downloads", L"download"},
+        {L"download", L"download"},
+        {L"docs", L"docs"},
+        {L"doc", L"docs"},
+        {L"tests", L"tests"},
+        {L"test", L"tests"},
+        {L"images", L"images"},
+        {L"image", L"images"},
+        {L"img", L"images"},
+        {L"scripts", L"scripts"},
+        {L"script", L"scripts"},
+        {L"styles", L"styles"},
+        {L"style", L"styles"},
+        {L"templates", L"templates"},
+        {L"template", L"templates"}
+    };
+    auto alias = aliases.find(slug);
+    if (alias != aliases.end()) return alias->second;
+
+    for (wchar_t& ch : slug) {
+        bool keep = iswalnum(ch) || ch == L'-' || ch == L'_';
+        if (!keep) ch = L'-';
+    }
+    while (!slug.empty() && (slug.front() == L'-' || slug.front() == L'_')) slug.erase(slug.begin());
+    while (!slug.empty() && (slug.back() == L'-' || slug.back() == L'_')) slug.pop_back();
+    return slug;
+}
+
+static int FolderIconForName(const std::wstring& folderName, bool open = false) {
+    std::wstring slug = FolderIconSlug(folderName);
+    if (!slug.empty()) {
+        std::wstring iconName = L"folder_" + slug + (open ? L"_open" : L"");
+        if (IconAssetExists(iconName)) return AddIcon(iconName, iconName);
+        if (open) {
+            iconName = L"folder_" + slug;
+            if (IconAssetExists(iconName)) return AddIcon(iconName, iconName);
+        }
+    }
+    return open ? g_iconIndex[L"folder_open"] : g_iconIndex[L"folder"];
 }
 
 static void InitExtensionMap() {
@@ -729,7 +806,7 @@ static void InitExtensionMap() {
 }
 
 static int IconForEntry(const Entry& entry) {
-    if (entry.isDir) return g_iconIndex[L"folder"];
+    if (entry.isDir) return FolderIconForName(entry.name);
     std::wstring ext = GetExtension(entry.name);
     auto it = g_extToIcon.find(ext);
     if (it == g_extToIcon.end()) return g_iconIndex[L"generic"];
@@ -825,6 +902,104 @@ static void StyleButton(HWND button) {
     SetWindowLongPtrW(button, GWLP_WNDPROC, (LONG_PTR)ButtonSubclassProc);
 }
 
+static RECT NormalizedRect(POINT a, POINT b) {
+    RECT rc{ std::min(a.x, b.x), std::min(a.y, b.y), std::max(a.x, b.x), std::max(a.y, b.y) };
+    return rc;
+}
+
+static void UpdateMarqueeSelection() {
+    RECT sel = NormalizedRect(g_marquee.start, g_marquee.current);
+    RECT client{};
+    GetClientRect(g_list, &client);
+    for (int i = 0; i < (int)g_entries.size(); ++i) {
+        RECT row{};
+        if (!ListView_GetItemRect(g_list, i, &row, LVIR_BOUNDS)) continue;
+        row.left = client.left;
+        row.right = client.right;
+        RECT overlap{};
+        bool selected = IntersectRect(&overlap, &sel, &row) != 0;
+        ListView_SetItemState(g_list, i, selected ? LVIS_SELECTED : 0, LVIS_SELECTED);
+    }
+}
+
+static void DrawMarquee(HDC hdc) {
+    if (!g_marquee.active) return;
+    RECT rc = NormalizedRect(g_marquee.start, g_marquee.current);
+    if (rc.right - rc.left < 2 || rc.bottom - rc.top < 2) return;
+
+    Graphics g(hdc);
+    g.SetSmoothingMode(SmoothingModeNone);
+    SolidBrush fill(Color(58, 202, 158, 230));
+    Pen border(Color(255, 202, 158, 230), 1.0f);
+    g.FillRectangle(&fill, (INT)rc.left, (INT)rc.top, (INT)(rc.right - rc.left), (INT)(rc.bottom - rc.top));
+    g.DrawRectangle(&border, (INT)rc.left, (INT)rc.top, (INT)(rc.right - rc.left - 1), (INT)(rc.bottom - rc.top - 1));
+}
+
+static LRESULT CALLBACK ListSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+    case WM_LBUTTONDOWN: {
+        POINT pt{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+        LVHITTESTINFO hit{};
+        hit.pt = pt;
+        int item = ListView_HitTest(hwnd, &hit);
+        bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+        bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+        if (!ctrl && !shift && item >= 0 && (ListView_GetItemState(hwnd, item, LVIS_SELECTED) & LVIS_SELECTED)) {
+            ListView_SetItemState(hwnd, item, 0, LVIS_SELECTED | LVIS_FOCUSED);
+            return 0;
+        }
+        if (!ctrl && !shift && item < 0) {
+            SetFocus(hwnd);
+            g_marquee.active = true;
+            g_marquee.start = pt;
+            g_marquee.current = pt;
+            SetCapture(hwnd);
+            ListView_SetItemState(hwnd, -1, 0, LVIS_SELECTED);
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
+        }
+        break;
+    }
+    case WM_MOUSEMOVE:
+        if (g_marquee.active) {
+            g_marquee.current = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            UpdateMarqueeSelection();
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
+        }
+        break;
+    case WM_LBUTTONUP:
+        if (g_marquee.active) {
+            g_marquee.current = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            UpdateMarqueeSelection();
+            g_marquee.active = false;
+            ReleaseCapture();
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
+        }
+        break;
+    case WM_CAPTURECHANGED:
+        if (g_marquee.active) {
+            g_marquee.active = false;
+            InvalidateRect(hwnd, nullptr, FALSE);
+        }
+        break;
+    case WM_PAINT: {
+        LRESULT result = CallWindowProcW(g_listProc, hwnd, msg, wParam, lParam);
+        HDC hdc = GetDC(hwnd);
+        DrawMarquee(hdc);
+        ReleaseDC(hwnd, hdc);
+        return result;
+    }
+    }
+    return CallWindowProcW(g_listProc, hwnd, msg, wParam, lParam);
+}
+
+static void StyleListView(HWND list) {
+    g_listProc = (WNDPROC)GetWindowLongPtrW(list, GWLP_WNDPROC);
+    SetWindowLongPtrW(list, GWLP_WNDPROC, (LONG_PTR)ListSubclassProc);
+}
+
 static void SetDarkListColors() {
     ListView_SetBkColor(g_list, kBg);
     ListView_SetTextBkColor(g_list, kBg);
@@ -833,7 +1008,63 @@ static void SetDarkListColors() {
     TreeView_SetTextColor(g_tree, kText);
 }
 
-static std::vector<Entry> EnumerateDirectory(const std::wstring& dir, bool foldersOnly) {
+static ULONGLONG DirectorySize(const std::wstring& dir) {
+    ULONGLONG total = 0;
+    WIN32_FIND_DATAW fd{};
+    HANDLE h = FindFirstFileW(JoinPath(dir, L"*").c_str(), &fd);
+    if (h == INVALID_HANDLE_VALUE) return total;
+
+    do {
+        std::wstring name = fd.cFileName;
+        if (name == L"." || name == L"..") continue;
+
+        ULONGLONG size = ((ULONGLONG)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            // Do not follow junctions or symlinks: they can point outside this folder or form loops.
+            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                size = DirectorySize(JoinPath(dir, name));
+            } else {
+                size = 0;
+            }
+        }
+        total += size;
+    } while (FindNextFileW(h, &fd));
+    FindClose(h);
+    return total;
+}
+
+static int CompareEntries(const Entry& a, const Entry& b) {
+    if (a.isDir != b.isDir) return a.isDir ? -1 : 1;
+
+    int cmp = 0;
+    switch (g_sortColumn) {
+    case 0:
+        cmp = _wcsicmp(a.name.c_str(), b.name.c_str());
+        break;
+    case 1:
+        cmp = _wcsicmp(TypeKey(a).c_str(), TypeKey(b).c_str());
+        break;
+    case 2:
+        cmp = a.size < b.size ? -1 : (a.size > b.size ? 1 : 0);
+        break;
+    case 3:
+        cmp = CompareFileTime(&a.modified, &b.modified);
+        break;
+    default:
+        cmp = _wcsicmp(TypeKey(a).c_str(), TypeKey(b).c_str());
+        break;
+    }
+    if (cmp == 0) cmp = _wcsicmp(a.name.c_str(), b.name.c_str());
+    return g_sortAscending ? cmp : -cmp;
+}
+
+static void SortEntries(std::vector<Entry>& entries) {
+    std::sort(entries.begin(), entries.end(), [](const Entry& a, const Entry& b) {
+        return CompareEntries(a, b) < 0;
+    });
+}
+
+static std::vector<Entry> EnumerateDirectory(const std::wstring& dir, bool foldersOnly, bool calculateFolderSizes = false) {
     std::vector<Entry> items;
     WIN32_FIND_DATAW fd{};
     std::wstring mask = JoinPath(dir, L"*");
@@ -848,7 +1079,8 @@ static std::vector<Entry> EnumerateDirectory(const std::wstring& dir, bool folde
         e.name = name;
         e.path = JoinPath(dir, name);
         e.isDir = isDir;
-        e.size = ((ULONGLONG)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
+        e.size = isDir && calculateFolderSizes ? DirectorySize(e.path) :
+            ((ULONGLONG)fd.nFileSizeHigh << 32) | fd.nFileSizeLow;
         e.modified = fd.ftLastWriteTime;
         items.push_back(e);
     } while (FindNextFileW(h, &fd));
@@ -883,14 +1115,14 @@ static bool HasSubFolders(const std::wstring& dir) {
     return found;
 }
 
-static HTREEITEM InsertTreeItem(HTREEITEM parent, const std::wstring& text, const std::wstring& path, int icon, bool mayHaveChildren) {
+static HTREEITEM InsertTreeItem(HTREEITEM parent, const std::wstring& text, const std::wstring& path, int icon, bool mayHaveChildren, int selectedIcon = -1) {
     TVINSERTSTRUCTW ins{};
     ins.hParent = parent;
     ins.hInsertAfter = TVI_SORT;
     ins.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
     ins.item.pszText = const_cast<LPWSTR>(text.c_str());
     ins.item.iImage = icon;
-    ins.item.iSelectedImage = icon;
+    ins.item.iSelectedImage = selectedIcon >= 0 ? selectedIcon : icon;
     HTREEITEM item = TreeView_InsertItem(g_tree, &ins);
     if (!path.empty()) g_treePaths[item] = path;
     if (mayHaveChildren) {
@@ -947,7 +1179,7 @@ static void PopulateTreeChildren(HTREEITEM item) {
     TreeView_DeleteItem(g_tree, TreeView_GetChild(g_tree, item));
     auto folders = EnumerateDirectory(pathIt->second, true);
     for (const auto& folder : folders) {
-        InsertTreeItem(item, folder.name, folder.path, g_iconIndex[L"folder"], HasSubFolders(folder.path));
+        InsertTreeItem(item, folder.name, folder.path, FolderIconForName(folder.name), HasSubFolders(folder.path), FolderIconForName(folder.name, true));
     }
     g_treeLoaded[item] = true;
 }
@@ -1061,10 +1293,13 @@ static void FillList(const std::wstring& dir) {
     ListView_DeleteAllItems(g_list);
     g_currentDir = NormalizePath(dir);
     g_entries.clear();
-    auto allEntries = EnumerateDirectory(dir, false);
+    // A folder's Size is the total size of every file it contains, including
+    // files in nested folders, so calculate it for every displayed folder.
+    auto allEntries = EnumerateDirectory(dir, false, true);
     for (const auto& e : allEntries) {
         if (FuzzyMatch(e.name, g_query)) g_entries.push_back(e);
     }
+    SortEntries(g_entries);
 
     for (size_t i = 0; i < g_entries.size(); ++i) {
         const Entry& e = g_entries[i];
@@ -1077,7 +1312,7 @@ static void FillList(const std::wstring& dir) {
         ListView_InsertItem(g_list, &item);
 
         std::wstring type = TypeLabel(e);
-        std::wstring size = e.isDir ? L"" : HumanSize(e.size);
+        std::wstring size = HumanSize(e.size);
         std::wstring modified = FormatFileTime(e.modified);
         ListView_SetItemText(g_list, (int)i, 1, const_cast<LPWSTR>(type.c_str()));
         ListView_SetItemText(g_list, (int)i, 2, const_cast<LPWSTR>(size.c_str()));
@@ -1148,13 +1383,13 @@ static void DrawListSubItem(NMLVCUSTOMDRAW* cd) {
     const Entry& e = g_entries[row];
     if (sub == 0) {
         int icon = IconForEntry(e);
-        ImageList_Draw(g_icons, icon, cd->nmcd.hdc, textRc.left, rc.top + (rc.bottom - rc.top - Dpi(kIconSizeBase)) / 2, ILD_TRANSPARENT);
+        ImageList_Draw(selected ? g_iconsSelected : g_icons, icon, cd->nmcd.hdc, textRc.left, rc.top + (rc.bottom - rc.top - Dpi(kIconSizeBase)) / 2, ILD_TRANSPARENT);
         textRc.left += Dpi(kIconSizeBase + 10);
         DrawHighlightedName(cd->nmcd.hdc, textRc, e, selected);
     } else {
         std::wstring text;
         if (sub == 1) text = TypeLabel(e);
-        else if (sub == 2) text = e.isDir ? L"" : HumanSize(e.size);
+        else if (sub == 2) text = HumanSize(e.size);
         else if (sub == 3) text = FormatFileTime(e.modified);
         DrawTextW(cd->nmcd.hdc, text.c_str(), -1, &textRc, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_END_ELLIPSIS | DT_NOPREFIX);
     }
@@ -1176,8 +1411,61 @@ static LRESULT HandleListCustomDraw(LPARAM lParam) {
     }
 }
 
+static LRESULT HandleHeaderCustomDraw(LPARAM lParam) {
+    auto* cd = (NMCUSTOMDRAW*)lParam;
+    if (cd->dwDrawStage == CDDS_PREPAINT) {
+        RECT rc{};
+        GetClientRect(cd->hdr.hwndFrom, &rc);
+        FillRect(cd->hdc, &rc, g_bgBrush);
+        return CDRF_NOTIFYITEMDRAW;
+    }
+    if (cd->dwDrawStage != CDDS_ITEMPREPAINT) return CDRF_DODEFAULT;
+
+    int index = (int)cd->dwItemSpec;
+    RECT rc = cd->rc;
+    FillRect(cd->hdc, &rc, g_bgBrush);
+
+    HPEN pen = CreatePen(PS_SOLID, 1, kSurface2);
+    HPEN oldPen = (HPEN)SelectObject(cd->hdc, pen);
+    MoveToEx(cd->hdc, rc.right - 1, rc.top + Dpi(8), nullptr);
+    LineTo(cd->hdc, rc.right - 1, rc.bottom - Dpi(8));
+    MoveToEx(cd->hdc, rc.left, rc.bottom - 1, nullptr);
+    LineTo(cd->hdc, rc.right, rc.bottom - 1);
+    SelectObject(cd->hdc, oldPen);
+    DeleteObject(pen);
+
+    wchar_t text[128]{};
+    HDITEMW item{};
+    item.mask = HDI_TEXT;
+    item.pszText = text;
+    item.cchTextMax = 128;
+    Header_GetItem((HWND)cd->hdr.hwndFrom, index, &item);
+
+    std::wstring headerText = text;
+    if (index == g_sortColumn) headerText += g_sortAscending ? L"  ▲" : L"  ▼";
+
+    RECT textRc = rc;
+    textRc.left += Dpi(10);
+    textRc.right -= Dpi(8);
+    SetBkMode(cd->hdc, TRANSPARENT);
+    SetTextColor(cd->hdc, kText);
+    HFONT oldFont = (HFONT)SelectObject(cd->hdc, g_font);
+    DrawTextW(cd->hdc, headerText.c_str(), -1, &textRc, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_END_ELLIPSIS | DT_NOPREFIX);
+    SelectObject(cd->hdc, oldFont);
+    return CDRF_SKIPDEFAULT;
+}
+
 static int SelectedIndex() {
     return ListView_GetNextItem(g_list, -1, LVNI_SELECTED);
+}
+
+static std::vector<int> SelectedIndices() {
+    std::vector<int> indices;
+    int item = -1;
+    while ((item = ListView_GetNextItem(g_list, item, LVNI_SELECTED)) != -1) {
+        indices.push_back(item);
+    }
+    return indices;
 }
 
 static void ShowContextMenu(POINT screenPt) {
@@ -1252,7 +1540,9 @@ static void OpenSelected() {
 static void InitIcons() {
     int iconSize = Dpi(kIconSizeBase);
     g_icons = ImageList_Create(iconSize, iconSize, ILC_COLOR32 | ILC_MASK, 32, 64);
+    g_iconsSelected = ImageList_Create(iconSize, iconSize, ILC_COLOR32 | ILC_MASK, 32, 64);
     g_iconCacheDir = JoinPath(ExecutableDir(), L"icon-cache\\96");
+    g_iconCacheSelectedDir = JoinPath(ExecutableDir(), L"icon-cache\\96-selected");
     AddIcon(L"generic", L"text");
     AddIcon(L"folder", L"_folder");
     AddIcon(L"folder_open", L"_folder_open");
@@ -1323,8 +1613,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         g_refresh = CreateWindowW(L"BUTTON", L"Refresh", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_OWNERDRAW, 0, 0, 0, 0, hwnd, (HMENU)ID_REFRESH, nullptr, nullptr);
         g_address = CreateWindowExW(0, L"EDIT", L"", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL, 0, 0, 0, 0, hwnd, (HMENU)ID_ADDRESS, nullptr, nullptr);
         g_search = CreateWindowExW(0, L"EDIT", L"", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL, 0, 0, 0, 0, hwnd, (HMENU)ID_SEARCH, nullptr, nullptr);
-        g_tree = CreateWindowExW(WS_EX_CLIENTEDGE, WC_TREEVIEWW, L"", WS_CHILD | WS_VISIBLE | TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS, 0, 0, 0, 0, hwnd, (HMENU)ID_TREE, nullptr, nullptr);
-        g_list = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"", WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | LVS_EDITLABELS, 0, 0, 0, 0, hwnd, (HMENU)ID_LIST, nullptr, nullptr);
+        g_tree = CreateWindowExW(0, WC_TREEVIEWW, L"", WS_CHILD | WS_VISIBLE | TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS, 0, 0, 0, 0, hwnd, (HMENU)ID_TREE, nullptr, nullptr);
+        g_list = CreateWindowExW(0, WC_LISTVIEWW, L"", WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_EDITLABELS, 0, 0, 0, 0, hwnd, (HMENU)ID_LIST, nullptr, nullptr);
         g_status = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd, nullptr, nullptr, nullptr);
 
         HWND controls[] = { g_back, g_forward, g_up, g_refresh, g_address, g_search, g_tree, g_list, g_status };
@@ -1340,14 +1630,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         InitIcons();
         TreeView_SetImageList(g_tree, g_icons, TVSIL_NORMAL);
         ListView_SetImageList(g_list, g_icons, LVSIL_SMALL);
+        StyleListView(g_list);
         SetDarkListColors();
         SetupListColumns();
         PopulateTreeRoot();
 
-        wchar_t winDir[MAX_PATH]{};
-        GetWindowsDirectoryW(winDir, MAX_PATH);
-        std::wstring start = std::wstring(winDir).substr(0, 3);
-        NavigateTo(start);
+        NavigateTo(DesktopPath());
         ResizeChildren(hwnd);
         return 0;
     }
@@ -1423,19 +1711,24 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         } else if (LOWORD(wParam) == ID_ADDRESS && HIWORD(wParam) == EN_UPDATE) {
             // handled on Enter through WM_KEYDOWN subclass-free accelerator below
         } else if (LOWORD(wParam) == ID_CTX_COPY) {
-            int selected = SelectedIndex();
-            if (selected >= 0 && selected < (int)g_entries.size()) PathListToClipboard({ g_entries[selected].path });
+            std::vector<std::wstring> paths;
+            for (int selected : SelectedIndices()) {
+                if (selected >= 0 && selected < (int)g_entries.size()) paths.push_back(g_entries[selected].path);
+            }
+            PathListToClipboard(paths);
         } else if (LOWORD(wParam) == ID_CTX_PASTE) {
             PasteFromClipboard();
         } else if (LOWORD(wParam) == ID_CTX_RENAME) {
             int selected = SelectedIndex();
             if (selected >= 0) ListView_EditLabel(g_list, selected);
         } else if (LOWORD(wParam) == ID_CTX_RECYCLE || LOWORD(wParam) == ID_CTX_DELETE) {
-            int selected = SelectedIndex();
-            if (selected >= 0 && selected < (int)g_entries.size()) {
+            auto selectedItems = SelectedIndices();
+            if (!selectedItems.empty()) {
                 bool recycle = LOWORD(wParam) == ID_CTX_RECYCLE;
-                if (recycle || MessageBoxW(hwnd, L"Permanently delete this item?", L"File Viewer", MB_ICONWARNING | MB_YESNO) == IDYES) {
-                    DeletePathWithShell(g_entries[selected].path, recycle);
+                if (recycle || MessageBoxW(hwnd, L"Permanently delete selected items?", L"File Viewer", MB_ICONWARNING | MB_YESNO) == IDYES) {
+                    for (int selected : selectedItems) {
+                        if (selected >= 0 && selected < (int)g_entries.size()) DeletePathWithShell(g_entries[selected].path, recycle);
+                    }
                     FillList(g_currentDir);
                 }
             }
@@ -1445,6 +1738,20 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         LPNMHDR hdr = (LPNMHDR)lParam;
         if (hdr->hwndFrom == g_list && hdr->code == NM_CUSTOMDRAW) {
             return HandleListCustomDraw(lParam);
+        }
+        if (hdr->hwndFrom == ListView_GetHeader(g_list) && hdr->code == NM_CUSTOMDRAW) {
+            return HandleHeaderCustomDraw(lParam);
+        }
+        if (hdr->hwndFrom == ListView_GetHeader(g_list) && hdr->code == HDN_ITEMCLICKW) {
+            auto* header = (LPNMHEADERW)lParam;
+            if (header->iItem == g_sortColumn) g_sortAscending = !g_sortAscending;
+            else {
+                g_sortColumn = header->iItem;
+                g_sortAscending = true;
+            }
+            FillList(g_currentDir);
+            InvalidateRect(hdr->hwndFrom, nullptr, FALSE);
+            return 0;
         }
         if (hdr->hwndFrom == g_list && hdr->code == NM_DBLCLK) {
             OpenSelected();
@@ -1511,16 +1818,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             return 0;
         }
         if (GetFocus() == g_list && wParam == VK_DELETE) {
-            int selected = SelectedIndex();
-            if (selected >= 0 && selected < (int)g_entries.size()) {
-                DeletePathWithShell(g_entries[selected].path, true);
+            auto selectedItems = SelectedIndices();
+            if (!selectedItems.empty()) {
+                for (int selected : selectedItems) {
+                    if (selected >= 0 && selected < (int)g_entries.size()) DeletePathWithShell(g_entries[selected].path, true);
+                }
                 FillList(g_currentDir);
             }
             return 0;
         }
         if ((GetKeyState(VK_CONTROL) & 0x8000) && wParam == 'C') {
-            int selected = SelectedIndex();
-            if (selected >= 0 && selected < (int)g_entries.size()) PathListToClipboard({ g_entries[selected].path });
+            std::vector<std::wstring> paths;
+            for (int selected : SelectedIndices()) {
+                if (selected >= 0 && selected < (int)g_entries.size()) paths.push_back(g_entries[selected].path);
+            }
+            PathListToClipboard(paths);
             return 0;
         }
         if ((GetKeyState(VK_CONTROL) & 0x8000) && wParam == 'V') {
@@ -1530,6 +1842,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         return 0;
     case WM_DESTROY:
         if (g_icons) ImageList_Destroy(g_icons);
+        if (g_iconsSelected) ImageList_Destroy(g_iconsSelected);
         if (g_font) DeleteObject(g_font);
         if (g_bgBrush) DeleteObject(g_bgBrush);
         if (g_surfaceBrush) DeleteObject(g_surfaceBrush);
@@ -1544,16 +1857,37 @@ static int SmokeTest() {
     GdiplusStartupInput gdiplusStartupInput;
     if (GdiplusStartup(&g_gdiplusToken, &gdiplusStartupInput, nullptr) != Ok) return 2;
     g_iconCacheDir = JoinPath(ExecutableDir(), L"icon-cache\\96");
+    g_iconCacheSelectedDir = JoinPath(ExecutableDir(), L"icon-cache\\96-selected");
     const wchar_t* names[] = { L"_folder", L"text", L"cpp", L"python", L"image" };
     for (const wchar_t* name : names) {
         std::wstring pngPath = JoinPath(g_iconCacheDir, std::wstring(name) + L".png");
+        std::wstring selectedPngPath = JoinPath(g_iconCacheSelectedDir, std::wstring(name) + L".png");
         HBITMAP hbmp = LoadPngBitmap(pngPath, Dpi(kIconSizeBase));
-        if (!hbmp) {
+        HBITMAP selectedBmp = LoadPngBitmap(selectedPngPath, Dpi(kIconSizeBase));
+        if (!hbmp || !selectedBmp) {
+            if (hbmp) DeleteObject(hbmp);
+            if (selectedBmp) DeleteObject(selectedBmp);
             GdiplusShutdown(g_gdiplusToken);
             return 3;
         }
         DeleteObject(hbmp);
+        DeleteObject(selectedBmp);
     }
+    g_icons = ImageList_Create(Dpi(kIconSizeBase), Dpi(kIconSizeBase), ILC_COLOR32 | ILC_MASK, 32, 64);
+    g_iconsSelected = ImageList_Create(Dpi(kIconSizeBase), Dpi(kIconSizeBase), ILC_COLOR32 | ILC_MASK, 32, 64);
+    AddIcon(L"generic", L"text");
+    AddIcon(L"folder", L"_folder");
+    AddIcon(L"folder_open", L"_folder_open");
+    if (FolderIconForName(L".vscode") == g_iconIndex[L"folder"]) {
+        ImageList_Destroy(g_icons);
+        ImageList_Destroy(g_iconsSelected);
+        GdiplusShutdown(g_gdiplusToken);
+        return 17;
+    }
+    ImageList_Destroy(g_icons);
+    ImageList_Destroy(g_iconsSelected);
+    g_icons = nullptr;
+    g_iconsSelected = nullptr;
     auto drives = GetDrives();
     if (ResolveJumpPath(L"Proj") != ProjectsPath()) return 5;
     if (ResolveJumpPath(L"Dwld") != DownloadsPath()) return 6;

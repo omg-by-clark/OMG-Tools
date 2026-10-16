@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "OMG Network Monitor",
+  "version": "2.0.0",
+  "identifier": "com.omgtools.networkmonitor",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [{
+      "label": "main",
+      "title": "OMG Network Monitor",
+      "width": 1280,
+      "height": 820,
+      "minWidth": 900,
+      "minHeight": 600,
+      "resizable": true,
+      "decorations": false,
+      "visible": false,
+      "backgroundColor": "#1e1e2e"
+    }],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "nsis",
+    "icon": ["icons/icon.ico"]
+  }
+}

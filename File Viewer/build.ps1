@@ -5,6 +5,7 @@ $source = Join-Path $scriptDir "FileViewer.cpp"
 $output = Join-Path $scriptDir "File Viewer.exe"
 $iconDir = "C:\Catppuccin-Icons\Theme\CatppuccinIcon"
 $iconCache = Join-Path $scriptDir "icon-cache\96"
+$iconCacheSelected = Join-Path $scriptDir "icon-cache\96-selected"
 
 [array]$nodeCandidates = @(
     "C:\Users\35727\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe",
@@ -14,7 +15,11 @@ $iconCache = Join-Path $scriptDir "icon-cache\96"
 if ($nodeCandidates.Count -gt 0 -and (Test-Path -LiteralPath $iconDir)) {
     $nodePath = $nodeCandidates[0]
     $env:NODE_PATH = "C:\Users\35727\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\node_modules"
-    & $nodePath (Join-Path $scriptDir "render-icons.js") $iconDir $iconCache 96
+    & $nodePath (Join-Path $scriptDir "render-icons.js") $iconDir $iconCache 96 "#303446"
+    if ($LASTEXITCODE -ne 0) {
+        throw "SVG icon rendering failed with exit code $LASTEXITCODE."
+    }
+    & $nodePath (Join-Path $scriptDir "render-icons.js") $iconDir $iconCacheSelected 96 "#414559"
     if ($LASTEXITCODE -ne 0) {
         throw "SVG icon rendering failed with exit code $LASTEXITCODE."
     }
